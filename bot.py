@@ -52,12 +52,16 @@ def send_message(chat, text):
 
 
 def start_callback(bot, update):
-    update.message.reply_text('WELCOME SIR')
-    button_list = [InlineKeyboardButton("Извиниться", switch_inline_query_current_chat="Прости пожалуста"),
-                   InlineKeyboardButton("Обидеться", switch_inline_query_current_chat="Я обиделась!")
+    button_list = [InlineKeyboardButton("Пиво на кране🍺", switch_inline_query_current_chat="Даешь пиво на кране"),
+                   InlineKeyboardButton("Пиво в бутылках🍾", switch_inline_query_current_chat="Даёшь пиво в бутылках"),
+                   InlineKeyboardButton("Еда🍔", switch_inline_query_current_chat="Даёшь еду и побыстрее"),
+                   InlineKeyboardButton("Бронь🗓", switch_inline_query_current_chat="Даёшь бронь столиков"),
+                   InlineKeyboardButton("Контакты📞", switch_inline_query_current_chat="Даёшь номер босса!"),
+                   InlineKeyboardButton("Время работы⏱", switch_inline_query_current_chat="Скажи, когда вы работаете?"),
+                   InlineKeyboardButton("Оценить💯", switch_inline_query_current_chat="Дай-ка я вас оценю!"),
                    ]
     reply_markup = InlineKeyboardMarkup(build_menu(button_list, n_cols=2))
-    bot.send_message(chat_id=update.message.chat_id, text="A two-column menu", reply_markup=reply_markup)
+    bot.send_message(chat_id=update.message.chat_id, text=config.welcoming_string, reply_markup=reply_markup)
 
     # LOGGING
     print("----------------------------")
@@ -103,7 +107,7 @@ def main():
         # 'username': 'PROXY_USER',
         # 'password': 'PROXY_PASS',
     }
-    
+
     updater = telegram.ext.Updater(TOKEN, request_kwargs=REQUEST_KWARGS)
     start_handler = CommandHandler('start', start_callback)
     message_handler = MessageHandler(Filters.text, message_response)
