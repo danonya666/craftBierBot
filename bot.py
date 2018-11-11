@@ -19,7 +19,10 @@ from telegram.ext import Dispatcher, JobQueue, CommandHandler, MessageHandler, F
     ConversationHandler, CallbackQueryHandler
 from telegram.utils.request import Request
 from beer import Beer
+from config import flag
 
+
+# Builds menu for buttons that appear in messages sent by bot(InlineKeyboardButtons)
 def build_menu(buttons,
                n_cols,
                header_buttons=None,
@@ -32,16 +35,9 @@ def build_menu(buttons,
     return menu
 
 
+# Function for /start command
+# Builds a custom cute keyboard
 def start_callback(bot, update):
-    button_list = [InlineKeyboardButton("Пиво на кране🍺", switch_inline_query_current_chat="Даешь пиво на кране"),
-                   InlineKeyboardButton("Пиво в бутылках🍾", switch_inline_query_current_chat="Даёшь пиво в бутылках"),
-                   InlineKeyboardButton("Еда🍔", switch_inline_query_current_chat="Даёшь еду и побыстрее"),
-                   InlineKeyboardButton("Бронь🗓", switch_inline_query_current_chat="Даёшь бронь столиков"),
-                   InlineKeyboardButton("Контакты📞", switch_inline_query_current_chat="Даёшь номер босса!"),
-                   InlineKeyboardButton("Время работы⏱", switch_inline_query_current_chat="Скажи, когда вы работаете?"),
-                   InlineKeyboardButton("Оценить💯", switch_inline_query_current_chat="Дай-ка я вас оценю!"),
-                   ]
-
     keyboard_button_list = [[KeyboardButton("Пиво на кране🍺"), KeyboardButton("Пиво в бутылках🍾")], [KeyboardButton(
         'Еда🍔'), KeyboardButton("Бронь🗓")], [KeyboardButton("Контакты📞"), KeyboardButton("Время работы⏱")],
                             ["Оценить💯"]]
@@ -62,6 +58,8 @@ def start_callback(bot, update):
     log_msg_to_file(update, "bot_log.txt")
 
 
+# Function responsible for responding to ordinary messages(non-photo-gif-audio BS)
+# First 5 strings are just some easter eggs, will delete them probably
 def message_response(bot, update):
     cmd = update.effective_message.text
     if cmd == "@CraftBierBot Прости пожалуста":
@@ -71,7 +69,7 @@ def message_response(bot, update):
     elif cmd == "Пиво на кране🍺":
         beer_on_tap(bot, update)
     else:
-        bot.send_message(chat_id=update.message.chat_id, text="Чего изволите, мой Господин?")
+        bot.send_message(chat_id=update.message.chat_id, text="Чего изволите, мой господин?")
     print("----------------------------")
     print(datetime.datetime.now())
     print(update.effective_user.username)
@@ -80,16 +78,35 @@ def message_response(bot, update):
     log_msg_to_file(update, "bot_log.txt")
 
 
+# Removes emoji from the string
+# emoji pattern was taken from the internet
+def remove_emoji(text):
+    return config.emoji_pattern.sub(r'', text)
+
+
+# noinspection PyBroadException
+# Logs sender data and message text to txt file
+# TODO: optimize exception system
 def log_msg_to_file(update, file):
     f = open(file, 'a')
     f.write("----------------------------" + "\n")
     f.write(str(datetime.datetime.now()) + "\n")
-    f.write(update.effective_user.first_name + " ")
-    f.write(update.effective_user.last_name + "(" + update.effective_user.username + ")" + "\n")
-    f.write(update.effective_message.text + "\n")
+    try:
+        f.write(update.effective_user.last_name + "(" + update.effective_user.username + ")" + "\n")
+    except:
+        try:
+            f.write(update.effective_user.last_name)
+        except:
+            try:
+                f.write(update.effective_user.username)
+            except:
+                f.write(update.effective_user.first_name)
+    f.write(remove_emoji(update.effective_message.text) + "\n")
     f.write("----------------------------" + "\n")
 
 
+# Happens when user taps "Beer on tap" button
+# Sends 3-button-menu asking user how to group the beer
 def beer_on_tap(bot, update):
     button_list = [InlineKeyboardButton("По странам", callback_data="beer by countries"),
                    InlineKeyboardButton("По сортам", callback_data="beer by sorts"),
@@ -98,17 +115,46 @@ def beer_on_tap(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text="Как сгруппировать пиво?", reply_markup=rM)
 
 
-def query_handler(bot, update):
-    if update.callback_query.data == config.query_messages["BbC"]:
-        bot.send_message(chat_id=
-                         update.callback_query.chat_instance, text=" ".join("".join(beer_by_countries(beer_list=config.test_beer_list)))
-        )
+# returns a string with the full beer list
+def beer_full_list(beer_list):
+    result_string = ""
+    for i in beer_list:
+        result_string += i.toString()
+    return result_string
 
+
+# Handles the queries incoming from InlineKeyboardButtons
+# They come from beer_on_tap section and some others
+# Don't know why I use dictionary there, it's not really useful
+def query_handler(bot, update):
+    data = update.callback_query.data
+    if data == config.query_messages["BbC"]:
+        bot.send_message(chat_id=
+                         update.callback_query.message.chat_id,
+                         text=beer_by_countries(beer_list=config.test_beer_list),
+                         parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
+                         )
+    elif data == config.query_messages["BbS"]:
+        bot.send_message(chat_id=update.callback_query.message.chat_id,
+                         text=beer_by_sorts(beer_list=config.test_beer_list),
+                         parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True)
+        return
+    elif data == config.query_messages["BfL"]:
+        bot.send_message(chat_id=update.callback_query.message.chat_id,
+                         text=beer_full_list(beer_list=config.test_beer_list),
+                         parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True)
+        return
+
+
+# returns a string that is sent after the query "beers by countries"
+# the algorithm is kind of unoptimized, but I guess it's OK for now
 def beer_by_countries(beer_list):
-    beers_by_countries = [[beer_list[0].country, beer_list[0].name]]
+    beers_by_countries = [[beer_list[0].country, beer_list[0]]]
     flag = 0
     counter = 0
     for i in beer_list:
+        if i == config.first_beer:
+            continue
         flag = 0
         counter = 0
         for j in beers_by_countries:
@@ -119,21 +165,79 @@ def beer_by_countries(beer_list):
         if flag == 1:
             pass
         elif flag == 0:
-            beers_by_countries.append([i.country, i.name])
+            beers_by_countries.append([i.country, i])
         else:
             print("FLAGERROR")
 
-    return beers_by_countries
+    print(beers_by_countries)
+    result_string = beer_list_by_countries_to_string(beers_by_countries)
+    print(result_string)
+    return result_string
+
+
+# converts a [[type, beer, beer, ...], ...] list to a beautiful string that is being sent to user
+def beer_list_by_type_to_string(beer_list):
+    result_string = ""
+    for i in beer_list:
+        result_string += i[0].upper() + "🍻" + ": \n\n"
+        # print(i[2].toString())
+        j = 1
+        while j < len(i):
+            print(i[j])
+            result_string += str(j) + " " + i[j].toString() + " "
+            j += 1
+    return result_string
+
+
+# returns a string that is sent after the query "beer_by_sorts"
+# unoptimized
+def beer_by_sorts(beer_list):
+    beers_by_sorts = [[beer_list[0].type, beer_list[0]]]
+    flag = 0
+    counter = 0
+    for i in beer_list:
+        if i == config.first_beer:
+            continue
+        flag = 0
+        counter = 0
+        for j in beers_by_sorts:
+            if j[0] == i.country:
+                flag = 1
+                beers_by_sorts[counter].append(i)
+            ++counter
+        if flag == 1:
+            pass
+        elif flag == 0:
+            beers_by_sorts.append([i.type, i])
+        else:
+            print("FLAGERROR")
+
+    result_string = beer_list_by_type_to_string(beers_by_sorts)
+    return result_string
+
+
+# [[country, beer, beer, ...], ...] -> cute string being sent to user
+def beer_list_by_countries_to_string(beer_list):
+    result_string = ""
+    for i in beer_list:
+        result_string += i[0] + flag(i[0]) + ": \n\n"
+        # print(i[2].toString())
+        j = 1
+        while j < len(i):
+            print(i[j])
+            result_string += str(j) + " " + i[j].toString() + " "
+            j += 1
+    return result_string
 
 
 def main():
-    my_beer_list = []
-    my_beer_list.append(Beer("Meizels Weisse", "Germany", "some brewery", 10, 5.5))
-    url = '190.15.195.64'
-    port = '47912'
-    TOKEN = config.api_token
+    TOKEN = config.api_token  # CraftBierBot api token
+
+    # for proxy
+    # there are some OK proxies in config.proxy_list
+    # they are not mine, but I don't think it's bad to use them ;)
     REQUEST_KWARGS = {
-        'proxy_url': 'http://69.70.219.202:56946/'  # NEED TO FIND NORMAL PROXY
+        'proxy_url': config.proxy_list[0]  # NEED TO FIND NORMAL PROXY
         # 'proxy_url': 'http://' + url + ':' + port + '/',
         # Optional, if you need authentication:
         # 'username': 'PROXY_USER',
@@ -148,7 +252,7 @@ def main():
     updater.dispatcher.add_handler(message_handler)
     updater.dispatcher.add_handler(callback_query_handler)
     updater.start_polling()
-    updater.idle()
+    updater.idle()  # not sure this string is necessary, but it works, so I'm keeping it
 
 
 if __name__ == '__main__':
