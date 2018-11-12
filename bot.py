@@ -8,6 +8,8 @@ import requests
 import logging
 import datetime
 
+import keys
+
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
 import ssl
@@ -60,6 +62,14 @@ def start_callback(bot, update):
 
 # Function responsible for responding to ordinary messages(non-photo-gif-audio BS)
 # First 5 strings are just some easter eggs, will delete them probably
+def beer_on_bottles(bot, update):
+    button_list = [InlineKeyboardButton("По странам", callback_data="bottled beer by countries"),
+                   InlineKeyboardButton("По сортам", callback_data="bottled beer by sorts"),
+                   InlineKeyboardButton("Полный список", callback_data="bottled beer full list")]
+    rM = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
+    message = bot.send_message(chat_id=update.message.chat_id, text="Как сгруппировать бутылочное пиво?", reply_markup=rM)
+
+
 def message_response(bot, update):
     cmd = update.effective_message.text
     if cmd == "@CraftBierBot Прости пожалуста":
@@ -67,7 +77,9 @@ def message_response(bot, update):
     elif cmd == "@CraftBierBot Я обиделась!":
         bot.send_message(chat_id=update.message.chat_id, text="Не обижайся дорогая, поехали в ПРАГУ!")
     elif cmd == "Пиво на кране🍺":
-        beer_on_tap(bot, update)
+        message = beer_on_tap(bot, update)
+    elif cmd == "Пиво в бутылках🍾":
+        beer_on_bottles(bot, update)
     else:
         bot.send_message(chat_id=update.message.chat_id, text="Чего изволите, мой господин?")
     print("----------------------------")
@@ -76,6 +88,7 @@ def message_response(bot, update):
     print(update.effective_message.text)
     print("----------------------------")
     log_msg_to_file(update, "bot_log.txt")
+
 
 
 # Removes emoji from the string
@@ -112,7 +125,18 @@ def beer_on_tap(bot, update):
                    InlineKeyboardButton("По сортам", callback_data="beer by sorts"),
                    InlineKeyboardButton("Полный список", callback_data="beer full list")]
     rM = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
-    bot.send_message(chat_id=update.message.chat_id, text="Как сгруппировать пиво?", reply_markup=rM)
+    message = bot.send_message(chat_id=update.message.chat_id, text="Как сгруппировать пиво на кранах?", reply_markup=rM)
+    return message
+
+
+def beer_on_tap_edit_msg(bot, update, message_id):
+    button_list = [InlineKeyboardButton("По странам", callback_data="beer by countries"),
+                   InlineKeyboardButton("По сортам", callback_data="beer by sorts"),
+                   InlineKeyboardButton("Полный список", callback_data="beer full list")]
+    rM = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
+    bot.edit_message_text(message_id=message_id,
+                          chat_id=update.callback_query.message.chat_id, text="Как сгруппировать пиво на кранах?")
+    bot.edit_message_reply_markup(message_id=message_id, chat_id=update.callback_query.message.chat_id, reply_markup=rM)
 
 
 # returns a string with the full beer list
@@ -126,24 +150,85 @@ def beer_full_list(beer_list):
 # Handles the queries incoming from InlineKeyboardButtons
 # They come from beer_on_tap section and some others
 # Don't know why I use dictionary there, it's not really useful
+def bottled_beer_by_counties(beer_list):
+    pass
+
+
+def bottled_beer_by_sorts(beer_list):
+    pass
+
+
+def bottled_beer_full_list(beer_list):
+    pass
+
+
 def query_handler(bot, update):
+    message_id = update.callback_query.message.message_id
     data = update.callback_query.data
+    button_list = [InlineKeyboardButton("Назад", callback_data="tab1_back")]
+    rM = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
     if data == config.query_messages["BbC"]:
-        bot.send_message(chat_id=
-                         update.callback_query.message.chat_id,
-                         text=beer_by_countries(beer_list=config.test_beer_list),
-                         parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
-                         )
+        bot.edit_message_text(chat_id=
+                              update.callback_query.message.chat_id,
+                              message_id=message_id,
+                              text=beer_by_countries(beer_list=config.test_beer_list),
+                              parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
+                              )
+        bot.edit_message_reply_markup(chat_id=
+                                      update.callback_query.message.chat_id,
+                                      message_id=message_id, reply_markup=rM)
     elif data == config.query_messages["BbS"]:
-        bot.send_message(chat_id=update.callback_query.message.chat_id,
-                         text=beer_by_sorts(beer_list=config.test_beer_list),
-                         parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True)
-        return
+        bot.edit_message_text(chat_id=
+                              update.callback_query.message.chat_id,
+                              message_id=message_id,
+                              text=beer_by_sorts(beer_list=config.test_beer_list),
+                              parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
+                              )
+        bot.edit_message_reply_markup(chat_id=
+                                      update.callback_query.message.chat_id,
+                                      message_id=message_id, reply_markup=rM)
     elif data == config.query_messages["BfL"]:
-        bot.send_message(chat_id=update.callback_query.message.chat_id,
-                         text=beer_full_list(beer_list=config.test_beer_list),
-                         parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True)
-        return
+        bot.edit_message_text(chat_id=
+                              update.callback_query.message.chat_id,
+                              message_id=message_id,
+                              text=beer_full_list(beer_list=config.test_beer_list),
+                              parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
+                              )
+        bot.edit_message_reply_markup(chat_id=
+                                      update.callback_query.message.chat_id,
+                                      message_id=message_id, reply_markup=rM)
+    elif data == config.query_messages["bBbC"]:
+        bot.edit_message_text(chat_id=
+                              update.callback_query.message.chat_id,
+                              message_id=message_id,
+                              text=bottled_beer_by_counties(beer_list=config.test_beer_list),
+                              parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
+                              )
+        bot.edit_message_reply_markup(chat_id=
+                                      update.callback_query.message.chat_id,
+                                      message_id=message_id, reply_markup=rM)
+    elif data == config.query_messages["bBbS"]:
+        bot.edit_message_text(chat_id=
+                              update.callback_query.message.chat_id,
+                              message_id=message_id,
+                              text=bottled_beer_by_sorts(beer_list=config.test_beer_list),
+                              parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
+                              )
+        bot.edit_message_reply_markup(chat_id=
+                                      update.callback_query.message.chat_id,
+                                      message_id=message_id, reply_markup=rM)
+    elif data == config.query_messages["bBfL"]:
+        bot.edit_message_text(chat_id=
+                              update.callback_query.message.chat_id,
+                              message_id=message_id,
+                              text=bottled_beer_full_list(beer_list=config.test_beer_list),
+                              parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
+                              )
+        bot.edit_message_reply_markup(chat_id=
+                                      update.callback_query.message.chat_id,
+                                      message_id=message_id, reply_markup=rM)
+    elif data == "tab1_back":
+        beer_on_tap_edit_msg(bot=bot, update=update, message_id=message_id)
 
 
 # returns a string that is sent after the query "beers by countries"
@@ -161,7 +246,7 @@ def beer_by_countries(beer_list):
             if j[0] == i.country:
                 flag = 1
                 beers_by_countries[counter].append(i)
-            ++counter
+            counter += 1
         if flag == 1:
             pass
         elif flag == 0:
@@ -231,7 +316,7 @@ def beer_list_by_countries_to_string(beer_list):
 
 
 def main():
-    TOKEN = config.api_token  # CraftBierBot api token
+    TOKEN = keys.api_token  # CraftBierBot api token
 
     # for proxy
     # there are some OK proxies in config.proxy_list
