@@ -19,6 +19,8 @@ Each button has some sub-data.
 6. Just a text with work hours
 7. Links to Untappd, Facebook, other social media.
 
+Beer class is in beer.py. Beer.name is obligatory, other fields can be filled by default if you are doing it for example.
+
 You don't have to install this repo, just write @CraftBierBot in telegram! 
 
 And be sure to come to our restaurant - Craft Bier Cafe, Mohovaya 27-29, Saint-Petersburg, Russia
