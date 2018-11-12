@@ -9,13 +9,16 @@ query_messages = {"BbC": "beer by countries",
                   "BfL": "beer full list",
                   "bBbC": "bottled beer by countries",
                   "bBbS": "bottled beer by sorts",
-                  "bBfL": "bottled beer full list"}
-
+                  "bBfL": "bottled beer full list",
+                  "bookfordate": "book for date"}
+day = 0
 test_beer_list = [Beer("Meizels Weisse", "Germany", "some brewery", 10, 5.5, "https://untappd.com/b/brauerei-gebr-maisel-maisel-s-weisse-original/35642", type="Weize beer", bottled=False),
                   Beer("French Beer", "France", "some brewery", 10, 5.5, "https://untappd.com/b/ratio-beerworks-dear-you/955352", "French Type", False),
                   Beer("Second German beer", "Germany", "some brewery", 10, 5.5, "https://untappd.com/b/warsteiner-warsteiner-premium-verum-german-pilsener/10703", type="Warsteiner", bottled=False)]
 
-bottled_beer_list = [Beer("bottle1", "Russia", "brewery1", 7, 15, "https://vk.com", "IPA", True)]
+bottled_beer_list = [Beer("bottle1", "Russia", "brewery1", 7, 15, "https://vk.com", "IPA", True),
+                     Beer("bottle2", type="IPA"),
+                     Beer("bottle3", type="IPA")]
 emoji_pattern = re.compile("["
                            u"\U0001F600-\U0001F64F"  # emoticons
                            u"\U0001F300-\U0001F5FF"  # symbols & pictographs
@@ -35,3 +38,4 @@ flag_dictionary = {"Germany": "🇩🇪",
                    "Belgium": "🇧🇪"}
 
 first_beer = test_beer_list[0]
+first_beer_bottled = bottled_beer_list[0]

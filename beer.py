@@ -6,7 +6,8 @@ class Beer:
     Just a class for my beer
     """
 
-    def __init__(self, name, country, brewery, ibu, abv, untappd_link, type, bottled):
+    def __init__(self, name, country="Russia", brewery="some brewery", ibu=5, abv=10,
+                 untappd_link="https://untappd.com/b/poehali-nebelyj-medved/1572703", type="IPA", bottled=False):
         """
         :param name: string
         :param country: string
@@ -25,8 +26,18 @@ class Beer:
         self.ibu = ibu
         self.abv = abv
         self.untappd_link = untappd_link
-        self.type = type # TYPE -  Ipa, Apa, Trippel and so on
+        self.type = type  # TYPE -  Ipa, Apa, Trippel and so on
         self.bottled = bottled
+
+    def _init__(self, name):
+        self.name = name
+        self.country = "Russia"
+        self.brewery = "some brewery"
+        self.ibu = 5
+        self.abv = 10
+        self.untappd_link = "http://www.no_link.com"
+        self.type = "IPA"
+        self.bottled = False
 
     def toString(self):
         result = "[" + self.name + "]" + "(" + self.untappd_link + ")" + config.flag(

@@ -3,12 +3,15 @@ from aifc import Error
 import telebot
 import telegram
 
+import book_a_table
 import config
 import requests
 import logging
 import datetime
 
 import keys
+import results
+from book_a_table import make_dates_menu
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     level=logging.INFO)
@@ -22,6 +25,8 @@ from telegram.ext import Dispatcher, JobQueue, CommandHandler, MessageHandler, F
 from telegram.utils.request import Request
 from beer import Beer
 from config import flag
+
+global selected_day
 
 
 # Builds menu for buttons that appear in messages sent by bot(InlineKeyboardButtons)
@@ -67,7 +72,8 @@ def beer_on_bottles(bot, update):
                    InlineKeyboardButton("По сортам", callback_data="bottled beer by sorts"),
                    InlineKeyboardButton("Полный список", callback_data="bottled beer full list")]
     rM = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
-    message = bot.send_message(chat_id=update.message.chat_id, text="Как сгруппировать бутылочное пиво?", reply_markup=rM)
+    message = bot.send_message(chat_id=update.message.chat_id, text="Как сгруппировать бутылочное пиво?",
+                               reply_markup=rM)
 
 
 def message_response(bot, update):
@@ -80,6 +86,9 @@ def message_response(bot, update):
         message = beer_on_tap(bot, update)
     elif cmd == "Пиво в бутылках🍾":
         beer_on_bottles(bot, update)
+    elif cmd == "Бронь🗓":
+        print("bron")
+        make_dates_menu(bot, update)
     else:
         bot.send_message(chat_id=update.message.chat_id, text="Чего изволите, мой господин?")
     print("----------------------------")
@@ -88,7 +97,6 @@ def message_response(bot, update):
     print(update.effective_message.text)
     print("----------------------------")
     log_msg_to_file(update, "bot_log.txt")
-
 
 
 # Removes emoji from the string
@@ -125,7 +133,8 @@ def beer_on_tap(bot, update):
                    InlineKeyboardButton("По сортам", callback_data="beer by sorts"),
                    InlineKeyboardButton("Полный список", callback_data="beer full list")]
     rM = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
-    message = bot.send_message(chat_id=update.message.chat_id, text="Как сгруппировать пиво на кранах?", reply_markup=rM)
+    message = bot.send_message(chat_id=update.message.chat_id, text="Как сгруппировать пиво на кранах?",
+                               reply_markup=rM)
     return message
 
 
@@ -151,22 +160,41 @@ def beer_full_list(beer_list):
 # They come from beer_on_tap section and some others
 # Don't know why I use dictionary there, it's not really useful
 def bottled_beer_by_counties(beer_list):
-    pass
+    result_string = beer_by_countries(beer_list)
+    return result_string
 
 
 def bottled_beer_by_sorts(beer_list):
-    pass
+    result_string = beer_by_sorts(beer_list)
+    return result_string
 
 
 def bottled_beer_full_list(beer_list):
-    pass
+    result_string = beer_full_list(beer_list)
+    return result_string
+
+
+def beer_on_bottles_edit_msg(bot, update, message_id):
+    button_list = [InlineKeyboardButton("По странам", callback_data="bottled beer by countries"),
+                   InlineKeyboardButton("По сортам", callback_data="bottled beer by sorts"),
+                   InlineKeyboardButton("Полный список", callback_data="bottled beer full list")]
+    rM = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
+    bot.edit_message_text(message_id=message_id,
+                          chat_id=update.callback_query.message.chat_id, text="Как сгруппировать бутылоное пиво?")
+    bot.edit_message_reply_markup(message_id=message_id, chat_id=update.callback_query.message.chat_id, reply_markup=rM)
 
 
 def query_handler(bot, update):
     message_id = update.callback_query.message.message_id
     data = update.callback_query.data
-    button_list = [InlineKeyboardButton("Назад", callback_data="tab1_back")]
-    rM = InlineKeyboardMarkup(build_menu(button_list, n_cols=1))
+    tab1_back_btn = [InlineKeyboardButton("Назад", callback_data="tab1_back")]
+    tab2_back_btn = [InlineKeyboardButton("назад", callback_data="tab2_back")]
+    rM1 = InlineKeyboardMarkup(build_menu(tab1_back_btn, n_cols=1))
+    rM2 = InlineKeyboardMarkup(build_menu(tab2_back_btn, n_cols=1))
+    choose_time_rm = InlineKeyboardMarkup([[InlineKeyboardButton("17:30", callback_data="1730"),
+                                            InlineKeyboardButton("18:00", callback_data="1800"),
+                                            InlineKeyboardButton("18:30", callback_data="1830"),
+                                            InlineKeyboardButton("19:00", callback_data="1900")]])
     if data == config.query_messages["BbC"]:
         bot.edit_message_text(chat_id=
                               update.callback_query.message.chat_id,
@@ -176,7 +204,7 @@ def query_handler(bot, update):
                               )
         bot.edit_message_reply_markup(chat_id=
                                       update.callback_query.message.chat_id,
-                                      message_id=message_id, reply_markup=rM)
+                                      message_id=message_id, reply_markup=rM1)
     elif data == config.query_messages["BbS"]:
         bot.edit_message_text(chat_id=
                               update.callback_query.message.chat_id,
@@ -186,7 +214,7 @@ def query_handler(bot, update):
                               )
         bot.edit_message_reply_markup(chat_id=
                                       update.callback_query.message.chat_id,
-                                      message_id=message_id, reply_markup=rM)
+                                      message_id=message_id, reply_markup=rM1)
     elif data == config.query_messages["BfL"]:
         bot.edit_message_text(chat_id=
                               update.callback_query.message.chat_id,
@@ -196,49 +224,81 @@ def query_handler(bot, update):
                               )
         bot.edit_message_reply_markup(chat_id=
                                       update.callback_query.message.chat_id,
-                                      message_id=message_id, reply_markup=rM)
+                                      message_id=message_id, reply_markup=rM1)
     elif data == config.query_messages["bBbC"]:
         bot.edit_message_text(chat_id=
                               update.callback_query.message.chat_id,
                               message_id=message_id,
-                              text=bottled_beer_by_counties(beer_list=config.test_beer_list),
+                              text=bottled_beer_by_counties(beer_list=config.bottled_beer_list),
                               parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
                               )
         bot.edit_message_reply_markup(chat_id=
                                       update.callback_query.message.chat_id,
-                                      message_id=message_id, reply_markup=rM)
+                                      message_id=message_id, reply_markup=rM2)
     elif data == config.query_messages["bBbS"]:
         bot.edit_message_text(chat_id=
                               update.callback_query.message.chat_id,
                               message_id=message_id,
-                              text=bottled_beer_by_sorts(beer_list=config.test_beer_list),
+                              text=bottled_beer_by_sorts(beer_list=config.bottled_beer_list),
                               parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
                               )
         bot.edit_message_reply_markup(chat_id=
                                       update.callback_query.message.chat_id,
-                                      message_id=message_id, reply_markup=rM)
+                                      message_id=message_id, reply_markup=rM2)
     elif data == config.query_messages["bBfL"]:
         bot.edit_message_text(chat_id=
                               update.callback_query.message.chat_id,
                               message_id=message_id,
-                              text=bottled_beer_full_list(beer_list=config.test_beer_list),
+                              text=bottled_beer_full_list(beer_list=config.bottled_beer_list),
                               parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
                               )
         bot.edit_message_reply_markup(chat_id=
                                       update.callback_query.message.chat_id,
-                                      message_id=message_id, reply_markup=rM)
+                                      message_id=message_id, reply_markup=rM2)
+    elif data == "order a table":  # TODO PHONE AUTECJUIASHCOUAS CATION
+        bot.send_message(chat_id=355251333, text="SOMEBODY ORDERED THE TABLE\n"
+                                                 "INFORMATION:\n"
+                                                 "{} {} {}".format(
+            results.selected_day[update.callback_query.message.chat_id],
+            results.selected_people[update.callback_query.message.chat_id],
+            results.selected_time[update.callback_query.message.chat_id]))
+    elif int(data) in range(1, 32):
+        bot.edit_message_text(chat_id=
+                              update.callback_query.message.chat_id,
+                              message_id=message_id,
+                              text="Выберите время",
+                              parse_mode=telegram.ParseMode.MARKDOWN, disable_web_page_preview=True
+                              )
+        bot.edit_message_reply_markup(chat_id=
+                                      update.callback_query.message.chat_id,
+                                      message_id=message_id, reply_markup=choose_time_rm)
+        results.selected_day[update.callback_query.message.chat_id] = update.callback_query.data
+        print(results.selected_day)
+    elif int(data) in range(1700, 2401):
+        book_a_table.make_peoples_menu(bot, update)
+        results.selected_time[update.callback_query.message.chat_id] = update.callback_query.data
+    elif int(data) in range(34, 55):
+        results.selected_people[update.callback_query.message.chat_id] = int(data) - 33
+        book_a_table.book_confirmation(bot, update)
+
     elif data == "tab1_back":
         beer_on_tap_edit_msg(bot=bot, update=update, message_id=message_id)
+    elif data == "tab2_back":
+        beer_on_bottles_edit_msg(bot=bot, update=update, message_id=message_id)
 
 
 # returns a string that is sent after the query "beers by countries"
 # the algorithm is kind of unoptimized, but I guess it's OK for now
 def beer_by_countries(beer_list):
+    if beer_list[0].bottled:
+        first_beer = config.first_beer_bottled
+    else:
+        first_beer = config.first_beer
     beers_by_countries = [[beer_list[0].country, beer_list[0]]]
     flag = 0
     counter = 0
     for i in beer_list:
-        if i == config.first_beer:
+        if i == first_beer:
             continue
         flag = 0
         counter = 0
@@ -277,16 +337,20 @@ def beer_list_by_type_to_string(beer_list):
 # returns a string that is sent after the query "beer_by_sorts"
 # unoptimized
 def beer_by_sorts(beer_list):
+    if beer_list[0].bottled:
+        first_beer = config.first_beer_bottled
+    else:
+        first_beer = config.first_beer
     beers_by_sorts = [[beer_list[0].type, beer_list[0]]]
     flag = 0
     counter = 0
     for i in beer_list:
-        if i == config.first_beer:
+        if i == first_beer:  # Prevents duplicate of first beer on list
             continue
         flag = 0
         counter = 0
         for j in beers_by_sorts:
-            if j[0] == i.country:
+            if j[0] == i.type:
                 flag = 1
                 beers_by_sorts[counter].append(i)
             ++counter
